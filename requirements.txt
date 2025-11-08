@@ -5,5 +5,4 @@ opencv-python-headless>=4.8.1.78
 matplotlib>=3.7.2
 h5py>=3.10.0
 mtcnn>=1.0.0
-tflite-runtime>=2.13.0
 gunicorn==21.2.0
