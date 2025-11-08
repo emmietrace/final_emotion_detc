@@ -6,6 +6,31 @@
   <title>Emotion Vortex</title>
   <link rel="stylesheet" href="../static/style.css" />
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* Inline styles only – no external CSS changes */
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #ccc;
+      border-top-color: #2ecc71;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-left: 8px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .hidden { display: none; }
+    .file-check {
+      color: #2ecc71;
+      font-weight: bold;
+      margin-left: 8px;
+    }
+    #file-label {
+      transition: all 0.3s ease;
+    }
+  </style>
 </head>
 <body>
   <div class="container">
@@ -23,11 +48,19 @@
     <div id="upload" class="tab-content active">
       <form id="upload-form" enctype="multipart/form-data">
         <input type="text" id="name-upload" placeholder="Your Name" required />
+        
         <div class="file-input">
-          <input type="file" id="image" accept="image/*" required />
-          <label for="image">Choose Image</label>
+          <input type="file" id="image" accept="image/*" required onchange="handleFileSelect(this)" />
+          <label for="image" id="file-label">
+            <span id="file-text">Choose Image</span>
+            <span id="file-check" class="file-check hidden">Checkmark</span>
+          </label>
         </div>
-        <button type="submit" id="analyze-button">Analyze Emotion</button>
+        
+        <button type="submit" id="analyze-button">
+          <span id="btn-text">Analyze Emotion</span>
+          <span id="spinner" class="spinner hidden"></span>
+        </button>
       </form>
     </div>
 
@@ -38,7 +71,10 @@
         <video id="video" autoplay playsinline></video>
         <canvas id="canvas" width="48" height="48" style="display:none;"></canvas>
       </div>
-      <button id="capture">Capture & Analyze</button>
+      <button id="capture">
+        <span id="capture-text">Capture & Analyze</span>
+        <span id="capture-spinner" class="spinner hidden"></span>
+      </button>
     </div>
 
     <!-- Result -->
@@ -61,20 +97,67 @@
       document.getElementById(tabName).classList.add('active');
       document.querySelector(`button[onclick="openTab('${tabName}')"]`).classList.add('active');
       if (tabName === 'webcam') startWebcam();
+      else if (stream) stream.getTracks().forEach(t => t.stop());
     }
 
-    // Upload form
+    // File selection feedback
+    function handleFileSelect(input) {
+      const label = document.getElementById('file-label');
+      const text = document.getElementById('file-text');
+      const check = document.getElementById('file-check');
+
+      if (input.files && input.files[0]) {
+        const name = input.files[0].name;
+        text.textContent = name.length > 18 ? name.substring(0, 15) + '...' : name;
+        check.classList.remove('hidden');
+        label.style.background = 'rgba(46, 204, 113, 0.2)';
+        label.style.border = '2px solid #2ecc71';
+      } else {
+        text.textContent = 'Choose Image';
+        check.classList.add('hidden');
+        label.style.background = '';
+        label.style.border = '';
+      }
+    }
+
+    // Upload form with spinner
     document.getElementById('upload-form').onsubmit = async (e) => {
       e.preventDefault();
-      const formData = new FormData();
-      formData.append('name', document.getElementById('name-upload').value);
-      formData.append('image', document.getElementById('image').files[0]);
+      const name = document.getElementById('name-upload').value.trim();
+      const file = document.getElementById('image').files[0];
+      if (!name || !file) return alert("Please enter name and select an image.");
 
-      const res = await fetch('/upload', { method: 'POST', body: formData });
-      const data = await res.json();
-      document.getElementById("analyze-button").value = "Analyzing";
-      if (data.emotion) showResult(data, document.getElementById('name-upload').value);
+      // Show spinner
+      document.getElementById('btn-text').classList.add('hidden');
+      document.getElementById('spinner').classList.remove('hidden');
+      document.getElementById('analyze-button').disabled = true;
+
+      const formData = new FormData();
+      formData.append('name', name);
+      formData.append('image', file);
+
+      try {
+        const res = await fetch('/upload', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (data.emotion) {
+          showResult(data, name);
+          resetUploadForm();
+        } else {
+          alert(data.error || "Analysis failed.");
+        }
+      } catch (err) {
+        alert("Network error. Try again.");
+      } finally {
+        document.getElementById('btn-text').classList.remove('hidden');
+        document.getElementById('spinner').classList.add('hidden');
+        document.getElementById('analyze-button').disabled = false;
+      }
     };
+
+    function resetUploadForm() {
+      document.getElementById('image').value = '';
+      handleFileSelect({ files: [] });
+    }
 
     // Webcam
     let stream;
@@ -84,23 +167,39 @@
         .then(s => {
           stream = s;
           document.getElementById('video').srcObject = s;
-        }).catch(err => alert("Camera access denied"));
+        }).catch(err => alert("Camera access denied: " + err.message));
     }
 
     document.getElementById('capture').onclick = async () => {
+      const name = document.getElementById('name-webcam').value.trim();
+      if (!name) return alert("Please enter your name.");
+
+      // Show spinner
+      document.getElementById('capture-text').classList.add('hidden');
+      document.getElementById('capture-spinner').classList.remove('hidden');
+      document.getElementById('capture').disabled = true;
+
       const canvas = document.getElementById('canvas');
       const ctx = canvas.getContext('2d');
       ctx.drawImage(document.getElementById('video'), 0, 0, 48, 48);
       const dataUrl = canvas.toDataURL('image/jpeg');
-      const name = document.getElementById('name-webcam').value;
 
-      const res = await fetch('/webcam', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: dataUrl, name })
-      });
-      const data = await res.json();
-      if (data.emotion) showResult(data, name);
+      try {
+        const res = await fetch('/webcam', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: dataUrl, name })
+        });
+        const data = await res.json();
+        if (data.emotion) showResult(data, name);
+        else alert(data.error || "Analysis failed.");
+      } catch (err) {
+        alert("Capture failed.");
+      } finally {
+        document.getElementById('capture-text').classList.remove('hidden');
+        document.getElementById('capture-spinner').classList.add('hidden');
+        document.getElementById('capture').disabled = false;
+      }
     };
 
     function showResult(data, name) {
@@ -112,9 +211,18 @@
       document.getElementById('confidence').textContent = (data.confidence * 100).toFixed(1);
     }
 
-    // Stop webcam on tab change
+    // Cleanup
     window.addEventListener('beforeunload', () => {
       if (stream) stream.getTracks().forEach(t => t.stop());
+    });
+
+    // Reset upload tab when switching
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (btn.textContent.includes('Upload')) {
+          setTimeout(resetUploadForm, 100);
+        }
+      });
     });
   </script>
 </body>
