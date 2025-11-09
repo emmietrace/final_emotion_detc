@@ -1,6 +1,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
+* { 
+  margin: 0; 
+  padding: 0; 
+  box-sizing: border-box; 
+}
+
 body {
   font-family: 'Poppins', sans-serif;
   background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
@@ -32,13 +37,22 @@ header h1 {
   background: linear-gradient(to right, #ff8a00, #e52e71);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 header p {
   text-align: center;
   opacity: 0.9;
   font-size: 0.95rem;
-  margin-bottom: 25px;
+  margin-bottom: 10px;
+}
+
+.credit {
+  text-align: center;
+  font-size: 0.85rem;
+  opacity: 0.7;
+  margin-bottom: 20px;
+  font-style: italic;
 }
 
 .tabs {
@@ -58,11 +72,15 @@ header p {
   font-weight: 500;
   cursor: pointer;
   transition: 0.3s;
+  font-size: 0.95rem;
 }
 
-.tab-btn.active, .tab-btn:hover {
+.tab-btn.active {
   background: rgba(255, 255, 255, 0.25);
-  transform: translateY(-2px);
+}
+
+.tab-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .tab-content {
@@ -70,7 +88,9 @@ header p {
   animation: slideUp 0.5s ease-out;
 }
 
-.tab-content.active { display: block; }
+.tab-content.active { 
+  display: block; 
+}
 
 input[type="text"] {
   width: 100%;
@@ -83,7 +103,9 @@ input[type="text"] {
   font-size: 1rem;
 }
 
-input::placeholder { color: rgba(255, 255, 255, 0.7); }
+input::placeholder { 
+  color: rgba(255, 255, 255, 0.7); 
+}
 
 .file-input {
   position: relative;
@@ -132,17 +154,25 @@ button:hover {
   box-shadow: 0 8px 20px rgba(218, 27, 96, 0.5);
 }
 
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .camera-container {
   position: relative;
   margin: 15px 0;
   border-radius: 15px;
   overflow: hidden;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.3);
 }
 
 #video {
   width: 100%;
   border-radius: 15px;
+  display: block;
 }
 
 .result {
@@ -173,18 +203,60 @@ button:hover {
   font-weight: 600;
   text-transform: uppercase;
   font-size: 0.9rem;
+  display: inline-block;
 }
 
-.emotion-tag.angry { background: #e74c3c; }
-.emotion-tag.disgust { background: #27ae60; }
-.emotion-tag.fear { background: #9b59b6; }
-.emotion-tag.happy { background: #f1c40f; color: #000; }
-.emotion-tag.neutral { background: #95a5a6; }
-.emotion-tag.sad { background: #3498db; }
-.emotion-tag.surprise { background: #e67e22; }
+.emotion-tag.angry { 
+  background: #e74c3c; 
+}
 
-.hidden { display: none; }
+.emotion-tag.disgust { 
+  background: #27ae60; 
+}
 
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-@keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.emotion-tag.fear { 
+  background: #9b59b6; 
+}
+
+.emotion-tag.happy { 
+  background: #f1c40f; 
+  color: #000; 
+}
+
+.emotion-tag.neutral { 
+  background: #95a5a6; 
+}
+
+.emotion-tag.sad { 
+  background: #3498db; 
+}
+
+.emotion-tag.surprise { 
+  background: #e67e22; 
+}
+
+.hidden { 
+  display: none; 
+}
+
+.loading {
+  text-align: center;
+  padding: 20px;
+  font-size: 0.95rem;
+  opacity: 0.9;
+}
+
+@keyframes fadeIn { 
+  from { opacity: 0; } 
+  to { opacity: 1; } 
+}
+
+@keyframes slideUp { 
+  from { transform: translateY(20px); opacity: 0; } 
+  to { transform: translateY(0); opacity: 1; } 
+}
+
+@keyframes popIn { 
+  from { transform: scale(0.8); opacity: 0; } 
+  to { transform: scale(1); opacity: 1; } 
+}
