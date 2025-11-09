@@ -17,7 +17,7 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 # -------------------------------
 # LOAD TFLITE MODEL
 # -------------------------------
-interpreter = tflite.Interpreter(model_path='emotion_model_vortex.tflite')
+interpreter = tflite.Interpreter(model_path='emotion_vortex_model.tflite')
 interpreter.allocate_tensors()
 input_details = interpreter.get_input_details()
 output_details = interpreter.get_output_details()
