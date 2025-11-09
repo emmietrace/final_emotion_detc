@@ -3,40 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Emotion Vortex</title>
-  <link rel="stylesheet" href="../static/style.css" />
+  <title>Emotion Vortex - by Emmie</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    /* Inline styles only – no external CSS changes */
-    .spinner {
-      display: inline-block;
-      width: 16px;
-      height: 16px;
-      border: 2px solid #ccc;
-      border-top-color: #2ecc71;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin-left: 8px;
-    }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    .hidden { display: none; }
-    .file-check {
-      color: #2ecc71;
-      font-weight: bold;
-      margin-left: 8px;
-    }
-    #file-label {
-      transition: all 0.3s ease;
-    }
-  </style>
+  <link rel="stylesheet" href="../static/style.css">
 </head>
 <body>
   <div class="container">
     <header>
       <h1>Emotion Vortex</h1>
       <p>Detect emotions with AI-powered precision</p>
+      <div class="credit">Created by Emmie</div>
     </header>
 
     <div class="tabs">
@@ -48,20 +24,13 @@
     <div id="upload" class="tab-content active">
       <form id="upload-form" enctype="multipart/form-data">
         <input type="text" id="name-upload" placeholder="Your Name" required />
-        
         <div class="file-input">
-          <input type="file" id="image" accept="image/*" required onchange="handleFileSelect(this)" />
-          <label for="image" id="file-label">
-            <span id="file-text">Choose Image</span>
-            <span id="file-check" class="file-check hidden">Checkmark</span>
-          </label>
+          <input type="file" id="image" accept="image/*" required />
+          <label for="image" id="file-label">Choose Image</label>
         </div>
-        
-        <button type="submit" id="analyze-button">
-          <span id="btn-text">Analyze Emotion</span>
-          <span id="spinner" class="spinner hidden"></span>
-        </button>
+        <button type="submit" id="analyze-button">Analyze Emotion</button>
       </form>
+      <div id="upload-loading" class="loading hidden">Analyzing your image...</div>
     </div>
 
     <!-- Webcam Tab -->
@@ -71,10 +40,8 @@
         <video id="video" autoplay playsinline></video>
         <canvas id="canvas" width="48" height="48" style="display:none;"></canvas>
       </div>
-      <button id="capture">
-        <span id="capture-text">Capture & Analyze</span>
-        <span id="capture-spinner" class="spinner hidden"></span>
-      </button>
+      <button id="capture">Capture & Analyze</button>
+      <div id="webcam-loading" class="loading hidden">Processing capture...</div>
     </div>
 
     <!-- Result -->
@@ -96,109 +63,140 @@
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       document.getElementById(tabName).classList.add('active');
       document.querySelector(`button[onclick="openTab('${tabName}')"]`).classList.add('active');
-      if (tabName === 'webcam') startWebcam();
-      else if (stream) stream.getTracks().forEach(t => t.stop());
-    }
-
-    // File selection feedback
-    function handleFileSelect(input) {
-      const label = document.getElementById('file-label');
-      const text = document.getElementById('file-text');
-      const check = document.getElementById('file-check');
-
-      if (input.files && input.files[0]) {
-        const name = input.files[0].name;
-        text.textContent = name.length > 18 ? name.substring(0, 15) + '...' : name;
-        check.classList.remove('hidden');
-        label.style.background = 'rgba(46, 204, 113, 0.2)';
-        label.style.border = '2px solid #2ecc71';
+      
+      // Hide result when switching tabs
+      document.getElementById('result').classList.add('hidden');
+      
+      if (tabName === 'webcam') {
+        startWebcam();
       } else {
-        text.textContent = 'Choose Image';
-        check.classList.add('hidden');
-        label.style.background = '';
-        label.style.border = '';
+        stopWebcam();
       }
     }
 
-    // Upload form with spinner
+    // Update file label when file is selected
+    document.getElementById('image').addEventListener('change', function(e) {
+      const fileName = e.target.files[0]?.name || 'Choose Image';
+      document.getElementById('file-label').textContent = fileName;
+    });
+
+    // Upload form
     document.getElementById('upload-form').onsubmit = async (e) => {
       e.preventDefault();
-      const name = document.getElementById('name-upload').value.trim();
-      const file = document.getElementById('image').files[0];
-      if (!name || !file) return alert("Please enter name and select an image.");
-
-      // Show spinner
-      document.getElementById('btn-text').classList.add('hidden');
-      document.getElementById('spinner').classList.remove('hidden');
-      document.getElementById('analyze-button').disabled = true;
-
       const formData = new FormData();
-      formData.append('name', name);
-      formData.append('image', file);
+      const nameInput = document.getElementById('name-upload');
+      const imageInput = document.getElementById('image');
+      
+      if (!nameInput.value.trim()) {
+        alert('Please enter your name');
+        return;
+      }
+      
+      if (!imageInput.files[0]) {
+        alert('Please select an image');
+        return;
+      }
+      
+      formData.append('name', nameInput.value);
+      formData.append('image', imageInput.files[0]);
+
+      const button = document.getElementById('analyze-button');
+      const loading = document.getElementById('upload-loading');
+      
+      button.disabled = true;
+      button.textContent = 'Analyzing...';
+      loading.classList.remove('hidden');
+      document.getElementById('result').classList.add('hidden');
 
       try {
         const res = await fetch('/upload', { method: 'POST', body: formData });
         const data = await res.json();
+        
         if (data.emotion) {
-          showResult(data, name);
-          resetUploadForm();
+          showResult(data, nameInput.value);
         } else {
-          alert(data.error || "Analysis failed.");
+          alert('Could not detect emotion. Please try another image.');
         }
-      } catch (err) {
-        alert("Network error. Try again.");
+      } catch (error) {
+        alert('Error analyzing image. Please try again.');
+        console.error(error);
       } finally {
-        document.getElementById('btn-text').classList.remove('hidden');
-        document.getElementById('spinner').classList.add('hidden');
-        document.getElementById('analyze-button').disabled = false;
+        button.disabled = false;
+        button.textContent = 'Analyze Emotion';
+        loading.classList.add('hidden');
       }
     };
 
-    function resetUploadForm() {
-      document.getElementById('image').value = '';
-      handleFileSelect({ files: [] });
-    }
-
     // Webcam
     let stream;
+    
     function startWebcam() {
       if (stream) return;
       navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
         .then(s => {
           stream = s;
           document.getElementById('video').srcObject = s;
-        }).catch(err => alert("Camera access denied: " + err.message));
+        }).catch(err => {
+          alert("Camera access denied. Please allow camera access to use this feature.");
+          console.error(err);
+        });
+    }
+
+    function stopWebcam() {
+      if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+        stream = null;
+      }
     }
 
     document.getElementById('capture').onclick = async () => {
-      const name = document.getElementById('name-webcam').value.trim();
-      if (!name) return alert("Please enter your name.");
-
-      // Show spinner
-      document.getElementById('capture-text').classList.add('hidden');
-      document.getElementById('capture-spinner').classList.remove('hidden');
-      document.getElementById('capture').disabled = true;
+      const nameInput = document.getElementById('name-webcam');
+      
+      if (!nameInput.value.trim()) {
+        alert('Please enter your name');
+        return;
+      }
+      
+      if (!stream) {
+        alert('Camera not available');
+        return;
+      }
 
       const canvas = document.getElementById('canvas');
       const ctx = canvas.getContext('2d');
-      ctx.drawImage(document.getElementById('video'), 0, 0, 48, 48);
+      const video = document.getElementById('video');
+      
+      ctx.drawImage(video, 0, 0, 48, 48);
       const dataUrl = canvas.toDataURL('image/jpeg');
+      
+      const button = document.getElementById('capture');
+      const loading = document.getElementById('webcam-loading');
+      
+      button.disabled = true;
+      button.textContent = 'Processing...';
+      loading.classList.remove('hidden');
+      document.getElementById('result').classList.add('hidden');
 
       try {
         const res = await fetch('/webcam', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image: dataUrl, name })
+          body: JSON.stringify({ image: dataUrl, name: nameInput.value })
         });
         const data = await res.json();
-        if (data.emotion) showResult(data, name);
-        else alert(data.error || "Analysis failed.");
-      } catch (err) {
-        alert("Capture failed.");
+        
+        if (data.emotion) {
+          showResult(data, nameInput.value);
+        } else {
+          alert('Could not detect emotion. Please try again.');
+        }
+      } catch (error) {
+        alert('Error processing capture. Please try again.');
+        console.error(error);
       } finally {
-        document.getElementById('capture-text').classList.remove('hidden');
-        document.getElementById('capture-spinner').classList.add('hidden');
-        document.getElementById('capture').disabled = false;
+        button.disabled = false;
+        button.textContent = 'Capture & Analyze';
+        loading.classList.add('hidden');
       }
     };
 
@@ -209,20 +207,14 @@
       document.getElementById('emotion').textContent = data.emotion;
       document.getElementById('emotion').className = 'emotion-tag ' + data.emotion.toLowerCase();
       document.getElementById('confidence').textContent = (data.confidence * 100).toFixed(1);
+      
+      // Scroll to result
+      document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
-    // Cleanup
+    // Stop webcam on page unload
     window.addEventListener('beforeunload', () => {
-      if (stream) stream.getTracks().forEach(t => t.stop());
-    });
-
-    // Reset upload tab when switching
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        if (btn.textContent.includes('Upload')) {
-          setTimeout(resetUploadForm, 100);
-        }
-      });
+      stopWebcam();
     });
   </script>
 </body>
