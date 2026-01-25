@@ -1,9 +1,6 @@
-Flask>=2.3.2
-Pillow>=9.5.0
-numpy>=1.21.0,<2.0.0
-opencv-python-headless>=4.8.1.78
-matplotlib>=3.7.2
-h5py
-mtcnn
-tflite-runtime>=2.13.0
-gunicorn==21.2.0
+flask
+gunicorn
+tflite-runtime
+opencv-python-headless
+numpy
+pillow
