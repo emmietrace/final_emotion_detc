@@ -55,167 +55,160 @@
       </div>
     </div>
   </div>
-
-  <script>
-    // Tab switching
-    function openTab(tabName) {
-      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.getElementById(tabName).classList.add('active');
-      document.querySelector(`button[onclick="openTab('${tabName}')"]`).classList.add('active');
-      
-      // Hide result when switching tabs
-      document.getElementById('result').classList.add('hidden');
-      
-      if (tabName === 'webcam') {
-        startWebcam();
-      } else {
-        stopWebcam();
-      }
-    }
-
-    // Update file label when file is selected
-    document.getElementById('image').addEventListener('change', function(e) {
-      const fileName = e.target.files[0]?.name || 'Choose Image';
-      document.getElementById('file-label').textContent = fileName;
-    });
-
-    // Upload form
-    document.getElementById('upload-form').onsubmit = async (e) => {
-      e.preventDefault();
-      const formData = new FormData();
-      const nameInput = document.getElementById('name-upload');
-      const imageInput = document.getElementById('image');
-      
-      if (!nameInput.value.trim()) {
-        alert('Please enter your name');
-        return;
-      }
-      
-      if (!imageInput.files[0]) {
-        alert('Please select an image');
-        return;
-      }
-      
-      formData.append('name', nameInput.value);
-      formData.append('image', imageInput.files[0]);
-
-      const button = document.getElementById('analyze-button');
-      const loading = document.getElementById('upload-loading');
-      
-      button.disabled = true;
-      button.textContent = 'Analyzing...';
-      loading.classList.remove('hidden');
-      document.getElementById('result').classList.add('hidden');
-
-      try {
-        const res = await fetch('/upload', { method: 'POST', body: formData });
-        const data = await res.json();
-        
-        if (data.emotion) {
-          showResult(data, nameInput.value);
-        } else {
-          alert('Could not detect emotion. Please try another image.');
-        }
-      } catch (error) {
-        alert('Error analyzing image. Please try again.');
-        console.error(error);
-      } finally {
-        button.disabled = false;
-        button.textContent = 'Analyze Emotion';
-        loading.classList.add('hidden');
-      }
-    };
-
-    // Webcam
-    let stream;
+<script>
+  // Tab switching
+  function openTab(tabName) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(tabName).classList.add('active');
+    document.querySelector(`button[onclick="openTab('${tabName}')"]`).classList.add('active');
     
-    function startWebcam() {
-      if (stream) return;
-      navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
-        .then(s => {
-          stream = s;
-          document.getElementById('video').srcObject = s;
-        }).catch(err => {
-          alert("Camera access denied. Please allow camera access to use this feature.");
-          console.error(err);
-        });
-    }
-
-    function stopWebcam() {
-      if (stream) {
-        stream.getTracks().forEach(t => t.stop());
-        stream = null;
-      }
-    }
-
-    document.getElementById('capture').onclick = async () => {
-      const nameInput = document.getElementById('name-webcam');
-      
-      if (!nameInput.value.trim()) {
-        alert('Please enter your name');
-        return;
-      }
-      
-      if (!stream) {
-        alert('Camera not available');
-        return;
-      }
-
-      const canvas = document.getElementById('canvas');
-      const ctx = canvas.getContext('2d');
-      const video = document.getElementById('video');
-      
-      ctx.drawImage(video, 0, 0, 48, 48);
-      const dataUrl = canvas.toDataURL('image/jpeg');
-      
-      const button = document.getElementById('capture');
-      const loading = document.getElementById('webcam-loading');
-      
-      button.disabled = true;
-      button.textContent = 'Processing...';
-      loading.classList.remove('hidden');
-      document.getElementById('result').classList.add('hidden');
-
-      try {
-        const res = await fetch('/webcam', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image: dataUrl, name: nameInput.value })
-        });
-        const data = await res.json();
-        
-        if (data.emotion) {
-          showResult(data, nameInput.value);
-        } else {
-          alert('Could not detect emotion. Please try again.');
-        }
-      } catch (error) {
-        alert('Error processing capture. Please try again.');
-        console.error(error);
-      } finally {
-        button.disabled = false;
-        button.textContent = 'Capture & Analyze';
-        loading.classList.add('hidden');
-      }
-    };
-
-    function showResult(data, name) {
-      document.getElementById('result').classList.remove('hidden');
-      document.getElementById('result-img').src = '/' + data.image_url + '?t=' + Date.now();
-      document.getElementById('result-name').textContent = name;
-      document.getElementById('emotion').textContent = data.emotion;
-      document.getElementById('emotion').className = 'emotion-tag ' + data.emotion.toLowerCase();
-      document.getElementById('confidence').textContent = (data.confidence * 100).toFixed(1);
-      
-      // Scroll to result
-      document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-
-    // Stop webcam on page unload
-    window.addEventListener('beforeunload', () => {
+    document.getElementById('result').classList.add('hidden');
+    
+    if (tabName === 'webcam') {
+      startWebcam();
+    } else {
       stopWebcam();
-    });
-  </script>
+    }
+  }
+
+  // --- FIX 1: Green Tick & Filename ---
+  document.getElementById('image').addEventListener('change', function(e) {
+    const fileName = e.target.files[0]?.name;
+    const label = document.getElementById('file-label');
+    
+    if (fileName) {
+      // Add green tick and filename
+      label.innerHTML = `✅ ${fileName}`;
+      label.style.border = "2px solid #27ae60"; // Green border hint
+      label.style.color = "#fff";
+    } else {
+      label.textContent = 'Choose Image';
+      label.style.border = "none";
+    }
+  });
+
+  // Upload form logic
+  document.getElementById('upload-form').onsubmit = async (e) => {
+    e.preventDefault();
+    const formData = new FormData();
+    const nameInput = document.getElementById('name-upload');
+    const imageInput = document.getElementById('image');
+    
+    if (!nameInput.value.trim() || !imageInput.files[0]) {
+      alert('Please fill in all fields');
+      return;
+    }
+    
+    formData.append('name', nameInput.value);
+    formData.append('image', imageInput.files[0]);
+
+    toggleLoading(true, 'upload');
+
+    try {
+      const res = await fetch('/upload', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (data.emotion) showResult(data, nameInput.value);
+      else alert(data.error || 'Detection failed');
+    } catch (error) {
+      console.error(error);
+      alert('An error occurred');
+    } finally {
+      toggleLoading(false, 'upload');
+    }
+  };
+
+  // --- FIX 2: High Resolution Webcam ---
+  let stream;
+  const video = document.getElementById('video');
+  
+  function startWebcam() {
+    if (stream) return;
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } } })
+      .then(s => {
+        stream = s;
+        video.srcObject = s;
+      }).catch(err => {
+        alert("Camera access denied.");
+      });
+  }
+
+  function stopWebcam() {
+    if (stream) {
+      stream.getTracks().forEach(t => t.stop());
+      stream = null;
+    }
+  }
+
+  document.getElementById('capture').onclick = async () => {
+    const nameInput = document.getElementById('name-webcam');
+    if (!nameInput.value.trim() || !stream) {
+      alert('Please enter name and allow camera');
+      return;
+    }
+
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    // CAPTURE AT FULL RESOLUTION
+    // We set canvas size to match the actual video stream size
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.9); // High quality JPG
+    
+    toggleLoading(true, 'webcam');
+
+    try {
+      const res = await fetch('/webcam', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: dataUrl, name: nameInput.value })
+      });
+      const data = await res.json();
+      if (data.emotion) showResult(data, nameInput.value);
+      else alert(data.error || 'Detection failed');
+    } catch (error) {
+      console.error(error);
+      alert('Error processing capture');
+    } finally {
+      toggleLoading(false, 'webcam');
+    }
+  };
+
+  // Helper to toggle UI states
+  function toggleLoading(isLoading, type) {
+    const btnId = type === 'upload' ? 'analyze-button' : 'capture';
+    const loadId = type === 'upload' ? 'upload-loading' : 'webcam-loading';
+    const btn = document.getElementById(btnId);
+    
+    btn.disabled = isLoading;
+    btn.textContent = isLoading ? 'Processing...' : (type === 'upload' ? 'Analyze Emotion' : 'Capture & Analyze');
+    
+    if (isLoading) {
+        document.getElementById(loadId).classList.remove('hidden');
+        document.getElementById('result').classList.add('hidden');
+    } else {
+        document.getElementById(loadId).classList.add('hidden');
+    }
+  }
+
+  function showResult(data, name) {
+    document.getElementById('result').classList.remove('hidden');
+    document.getElementById('result-img').src = '/' + data.image_url + '?t=' + Date.now();
+    document.getElementById('result-name').textContent = name;
+    document.getElementById('emotion').textContent = data.emotion;
+    
+    // Reset classes and add new emotion class
+    const tag = document.getElementById('emotion');
+    tag.className = 'emotion-tag ' + data.emotion.toLowerCase();
+    
+    document.getElementById('confidence').textContent = data.confidence; // Backend handles formatting now
+    document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  window.addEventListener('beforeunload', () => stopWebcam());
+</script>
 </body>
 </html>
