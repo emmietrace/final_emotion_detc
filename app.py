@@ -1,4 +1,4 @@
-# app.py - TFLite Version (Render Optimized)
+# app.py - TFLite Runtime Version (Render Optimized)
 from flask import Flask, render_template, request, jsonify
 import numpy as np
 import cv2
@@ -6,7 +6,9 @@ import os
 import sqlite3
 from datetime import datetime
 import base64
-import tensorflow as tf # Uses tensorflow-cpu
+
+# CHANGED: Use the lightweight runtime instead of full TensorFlow
+import tflite_runtime.interpreter as tflite
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
@@ -15,11 +17,10 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 # -------------------------------
 # LOAD TFLITE MODEL
 # -------------------------------
-# Load the TFLite model and allocate tensors.
-interpreter = tf.lite.Interpreter(model_path="emotion_model.tflite")
+# CHANGED: Load using tflite_runtime
+interpreter = tflite.Interpreter(model_path="emotion_model.tflite")
 interpreter.allocate_tensors()
 
-# Get input and output tensors.
 input_details = interpreter.get_input_details()
 output_details = interpreter.get_output_details()
 
@@ -60,36 +61,33 @@ def process_and_predict(image_path):
         # 1. Read Image
         img = cv2.imread(image_path)
         
-        # 2. Face Detection (Haar Cascade - lightweight)
+        # 2. Face Detection
         face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         faces = face_cascade.detectMultiScale(gray, 1.3, 5)
 
-        # If no face, use the whole image (fallback)
         if len(faces) > 0:
             x, y, w, h = faces[0]
             roi_gray = gray[y:y+h, x:x+w]
         else:
             roi_gray = gray
 
-        # 3. Resize to 64x64 (Model Requirement)
+        # 3. Resize and Normalize
         roi_gray = cv2.resize(roi_gray, (64, 64))
-        
-        # 4. Normalize (0-1)
         roi_gray = roi_gray.astype('float32') / 255.0
         
-        # 5. Expand dims to match input shape (1, 64, 64, 1)
+        # 4. Expand dims
         input_data = np.expand_dims(roi_gray, axis=0)
         input_data = np.expand_dims(input_data, axis=-1)
 
-        # 6. Predict
+        # 5. Predict using the lightweight interpreter
         interpreter.set_tensor(input_details[0]['index'], input_data)
         interpreter.invoke()
         output_data = interpreter.get_tensor(output_details[0]['index'])[0]
         
         idx = np.argmax(output_data)
         emotion = EMOTIONS[idx]
-        confidence = float(output_data[idx] * 100) # Convert to percentage
+        confidence = float(output_data[idx] * 100)
 
         return emotion, confidence
     except Exception as e:
